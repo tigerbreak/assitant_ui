@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>运维 AI 助手工作台原型演示</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js" crossorigin></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen overflow-hidden font-sans">
+    <div id="root">
+        <div class="flex items-center justify-center h-screen text-sm text-slate-500">
+            <i class="fa-solid fa-spinner animate-spin mr-2"></i> 正在加载 AI 智能助手引擎...
+        </div>
+    </div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // ==========================================
+        // 核心组件 A：🤖 运维知识库助手 (RAG Flow Mode)
+        // ==========================================
+        function RagAssistantView({ activeRef, setActiveRef }) {
+            const [messages, setMessages] = useState([
+                { id: 1, role: 'user', content: '今天K8s集群节点报错 0/3 nodes are available: 3 Insufficient cpu. 怎么处理？' },
+                { 
+                    id: 2, 
+                    role: 'assistant', 
+                    content: '该错误表明您的 K8s 集群中没有任何节点具备足够的空闲 CPU 来调度新的 Pod。',
+                    refs: [
+                        { title: '📄 核心集群故障排查预案.md', score: '0.94', text: '当集群出现 Insufficient cpu 时，优先排查高能耗非核心 Pod，或触发 HPA 与集群节点自动扩容策略。生产环境需紧急核对 Resource Request 配置...' },
+                        { title: '📄 K8s资源调优规范_v2.pdf', score: '0.81', text: '过大的 Request CPU 会导致调度器拒绝排产。生产环境建议将 limit 与 request 的比例保持在 2:1 到 4:1 之间，避免资源超卖引发瘫痪。' }
+                    ]
+                }
+            ]);
+            const [input, setInput] = useState('');
+
+            const handleSend = () => {
+                if (!input.trim()) return;
+                setMessages([...messages, { id: Date.now(), role: 'user', content: input }]);
+                setInput('');
+                setTimeout(() => {
+                    setMessages(prev => [...prev, {
+                        id: Date.now() + 1,
+                        role: 'assistant',
+                        content: `正在检索企业运维知识库...\n针对您询问的 "${input}"，已定位到相关网络和安全组配置。请优先检查内网交换机安全组策略的 80/443 端口放行状态，并比对网关路由表。`,
+                        refs: [{ title: '📄 生产网络拓扑与策略配置指南.docx', score: '0.89', text: '区域网络突发无法连接时，需核对核心交换机 ACL 规则。若涉及跨区通信，重点排查大流量导致的云企业网（CEN）带宽限流。' }]
+                    }]);
+                }, 800);
+            };
+
+            return (
+                <div class="flex-1 flex h-full animate-fade-in">
+                    {/* 对话主画布 */}
+                    <div class="flex-1 flex flex-col h-full border-r border-slate-800">
+                        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                            {messages.map(msg => (
+                                <div key={msg.id} class={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    {msg.role === 'assistant' && (
+                                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center text-sm shrink-0">🤖</div>
+                                    )}
+                                    <div class={`p-4 rounded-xl max-w-2xl text-sm leading-relaxed ${
+                                        msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-slate-900 border border-slate-800 rounded-tl-none'}`}>
+                                        <p class="whitespace-pre-line">{msg.content}</p>
+                                        
+                                        {/* RAG 专属：知识库引用 */}
+                                        {msg.refs && (
+                                            <div class="mt-4 pt-3 border-t border-slate-800">
+                                                <div class="text-xs text-slate-500 font-semibold mb-2"><i class="fa-solid fa-book-open mr-1"></i> 知识库参考来源 (RAG 召回明细)：</div>
+                                                <div class="flex flex-wrap gap-2">
+                                                    {msg.refs.map((ref, idx) => (
+                                                        <button key={idx} onClick={() => setActiveRef(ref)}
+                                                            class="text-xs bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 px-2 py-1 rounded transition-colors flex items-center gap-1.5">
+                                                            {ref.title} 
+                                                            <span class="bg-blue-500/20 text-[10px] px-1 rounded text-blue-300">重合度: {ref.score}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        {/* 输入框 */}
+                        <div class="p-4 bg-slate-900/30 border-t border-slate-800">
+                            <div class="max-w-3xl mx-auto relative flex items-center">
+                                <input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                                    placeholder="输入运维故障表现、配置命令查询... (如：网关超时504怎么排查？)" class="w-full bg-slate-900 border border-slate-800 pl-4 pr-12 py-3 rounded-xl focus:outline-none focus:border-blue-500 text-sm shadow-inner text-slate-200" />
+                                <button onClick={handleSend} class="absolute right-3 p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                                    <i class="fa-solid fa-paper-plane text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 右侧：RAG 详情抽屉 (点击来源时无缝展开) */}
+                    {activeRef ? (
+                        <div class="w-80 bg-slate-900 p-4 flex flex-col justify-between border-l border-slate-800 animate-fade-in">
+                            <div>
+                                <div class="flex justify-between items-center pb-3 border-b border-slate-800 mb-4">
+                                    <span class="text-xs font-bold text-slate-400"><i class="fa-solid fa-file-text mr-1"></i> 原始分块切片 (Chunk)</span>
+                                    <button onClick={() => setActiveRef(null)} class="text-slate-500 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                                <h4 class="text-sm font-bold text-blue-400 mb-2">{activeRef.title}</h4>
+                                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs text-slate-300 leading-relaxed max-h-[400px] overflow-y-auto">
+                                    {activeRef.text}
+                                </div>
+                            </div>
+                            <div class="text-[11px] text-slate-500 text-center border-t border-slate-800 pt-3">通过 RAGFlow 混合检索召回</div>
+                        </div>
+                    ) : (
+                        <div class="w-80 bg-slate-900 p-6 flex flex-col items-center justify-center text-slate-600 text-center">
+                            <i class="fa-solid fa-quote-right text-3xl mb-2 opacity-20"></i>
+                            <p class="text-xs leading-loose">点击左侧AI气泡中的<br /><span class="text-blue-400 font-semibold">知识来源标签</span><br />右侧可穿透查看文档切片原文</p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // ==========================================
+        // 核心组件 B：📊 Jira 数据 Insight 助手 (带统计图表渲染)
+        // ==========================================
+        function JiraInsightView() {
+            return (
+                <div class="flex-1 flex h-full overflow-hidden animate-fade-in">
+                    {/* 左侧：图表看板区 */}
+                    <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                        {/* 顶部 AI 自动生成的 Summary */}
+                        <div class="bg-gradient-to-r from-indigo-950/50 to-slate-900 border border-indigo-500/20 rounded-xl p-5 shadow-lg">
+                            <div class="flex items-center gap-2 text-indigo-400 font-bold mb-3 text-sm">
+                                <i class="fa-solid fa-wand-magic-sparkles animate-pulse"></i> AI 本周 Jira 运维效能深度洞察 (Summary)
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-300 leading-relaxed">
+                                <div class="bg-slate-950/60 p-3 rounded-lg border border-slate-800/60">
+                                    <b class="text-white block mb-1">📈 趋势预警</b>
+                                    本周新增工单 <b class="text-indigo-400">142</b> 件，环比暴增 <span class="text-rose-400 font-semibold">14%</span>。异常报障主要由于“基础群集动态扩容”模块触发。
+                                </div>
+                                <div class="bg-slate-950/60 p-3 rounded-lg border border-slate-800/60">
+                                    <b class="text-white block mb-1">⚠️ 效能瓶颈</b>
+                                    智能定位阻塞点：<span class="text-amber-400">网络资源审批组</span> 平均响应时效达 3.2 天，环比拉长 18%，是全链路流转最慢节点。
+                                </div>
+                                <div class="bg-slate-950/60 p-3 rounded-lg border border-slate-800/60">
+                                    <b class="text-white block mb-1">💡 风险规避</b>
+                                    当前有 3 个 P0 级核心数据库迁移单存在超期风险。AI 预测：若不增派 DBA 支援，本批次迭代整体将延期 48 小时。
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 统计图表渲染组件网格 */}
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm">
+                                <div class="text-xs text-slate-400 font-bold uppercase mb-1">未解决活跃工单</div>
+                                <div class="text-2xl font-black text-white flex items-baseline gap-2">
+                                    42 个 <span class="text-xs text-rose-400 font-normal"><i class="fa-solid fa-arrow-up"></i> 12%</span>
+                                </div>
+                                {/* 纯 CSS 渐变柱状图渲染效果 */}
+                                <div class="h-12 mt-4 flex items-end gap-1.5 bg-slate-950/50 p-1.5 rounded border border-slate-800/30">
+                                    <div class="bg-indigo-500/40 w-full h-1/3 rounded-sm"></div>
+                                    <div class="bg-indigo-500/50 w-full h-1/2 rounded-sm"></div>
+                                    <div class="bg-indigo-500/70 w-full h-2/3 rounded-sm"></div>
+                                    <div class="bg-indigo-500 w-full h-5/6 rounded-sm"></div>
+                                    <div class="bg-indigo-400 w-full h-full rounded-sm animate-pulse"></div>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm">
+                                <div class="text-xs text-slate-400 font-bold uppercase mb-1">平均响应时间 (MTTR)</div>
+                                <div class="text-2xl font-black text-white flex items-baseline gap-2">
+                                    4.5 小时 <span class="text-xs text-emerald-400 font-normal"><i class="fa-solid fa-arrow-down"></i> 0.8h</span>
+                                </div>
+                                {/* 纯 CSS 处理时效趋势流线图效果 */}
+                                <div class="h-12 mt-4 flex items-end gap-1.5 bg-slate-950/50 p-1.5 rounded border border-slate-800/30">
+                                    <div class="bg-emerald-500 w-full h-full rounded-sm"></div>
+                                    <div class="bg-emerald-500/80 w-full h-4/5 rounded-sm"></div>
+                                    <div class="bg-emerald-500/60 w-full h-3/5 rounded-sm"></div>
+                                    <div class="bg-emerald-500/40 w-full h-1/2 rounded-sm"></div>
+                                    <div class="bg-emerald-500/30 w-full h-1/3 rounded-sm"></div>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm flex flex-col justify-between">
+                                <div class="text-xs text-slate-400 font-bold uppercase mb-1">工单风险分类占比</div>
+                                <div class="space-y-1.5 my-2">
+                                    <div class="flex justify-between text-[11px]"><span class="text-slate-400">权限变更</span><span class="text-indigo-300 font-semibold">40%</span></div>
+                                    <div class="w-full bg-slate-950 h-1 rounded-full"><div class="bg-indigo-500 h-1 rounded-full" style={{width: '40%'}}></div></div>
+                                    <div class="flex justify-between text-[11px]"><span class="text-slate-400">故障报修</span><span class="text-emerald-300 font-semibold">35%</span></div>
+                                    <div class="w-full bg-slate-950 h-1 rounded-full"><div class="bg-emerald-500 h-1 rounded-full" style={{width: '35%'}}></div></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 数据列表与 AI 行内联动 */}
+                        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
+                            <div class="px-4 py-3 bg-slate-800/40 border-b border-slate-800 flex justify-between items-center">
+                                <span class="text-xs font-bold text-slate-300"><i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i> 待 AI 根因分析的高危积压单据</span>
+                                <span class="text-[10px] text-slate-500">点击右侧按钮直接向 AI 发起追问下钻</span>
+                            </div>
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="border-b border-slate-800 text-slate-400 bg-slate-950/20">
+                                        <th class="p-3">工单 Key</th>
+                                        <th class="p-3">概要说明</th>
+                                        <th class="p-3">当前负责人</th>
+                                        <th class="p-3 text-center">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
+                                        <td class="p-3 font-mono text-indigo-400">OPS-1024</td>
+                                        <td class="p-3">核心产线 MySQL 读写分离集群从库同步延迟严重</td>
+                                        <td class="p-3 text-slate-300">张大宝 (DBA)</td>
+                                        <td class="p-3 text-center">
+                                            <button class="bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white px-2 py-0.5 rounded transition-all text-[11px]"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>AI 诊断</button>
+                                        </td>
+                                    </tr>
+                                    <tr class="hover:bg-slate-800/30 transition-colors">
+                                        <td class="p-3 font-mono text-indigo-400">OPS-1192</td>
+                                        <td class="p-3">北京二区 VPC 网络安全组规则同步执行失败</td>
+                                        <td class="p-3 text-slate-300">李小强 (网络组)</td>
+                                        <td class="p-3 text-center">
+                                            <button class="bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white px-2 py-0.5 rounded transition-all text-[11px]"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>AI 诊断</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* 右侧：专注于当前看板数据的 AI 提问栏 */}
+                    <div class="w-80 bg-slate-900 border-l border-slate-800 flex flex-col justify-between">
+                        <div class="p-4 space-y-4">
+                            <div class="text-xs font-bold text-slate-400 pb-2 border-b border-slate-800"><i class="fa-solid fa-chart-network mr-1"></i> Jira 提问上下文</div>
+                            <div class="bg-slate-950 p-3 rounded-lg border border-indigo-500/10 text-xs text-slate-400 leading-relaxed">
+                                <span class="text-emerald-400"><i class="fa-solid fa-link mr-1"></i> 已自动绑定：</span>当前看板所关联的 142 项迭代效能数据流与 Jira REST API。
+                            </div>
+                            <div class="text-xs text-slate-500">
+                                <span class="text-slate-400 font-semibold block mb-1">💡 快捷输入提示：</span>
+                                尝试在下方输入：“分析 OPS-1024 为什么超时？” 或 “哪个模块的 Bug 堆积最严重？”
+                            </div>
+                        </div>
+                        {/* 对话追问框 */}
+                        <div class="p-4 bg-slate-950/40 border-t border-slate-800">
+                            <div class="relative flex items-center">
+                                <input type="text" placeholder="对当前 Jira 看板数据继续追问..." 
+                                    class="w-full bg-slate-950 border border-slate-800 pl-3 pr-10 py-2.5 rounded-lg focus:outline-none focus:border-indigo-500 text-xs text-slate-200" />
+                                <button class="absolute right-2.5 p-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded transition-colors text-xs">➔</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // 主框架布局：支持顶部直接快速无缝切换
+        // ==========================================
+        function App() {
+            const [currentAssistant, setCurrentAssistant] = useState('rag');
+            const [activeRef, setActiveRef] = useState(null);
+
+            return (
+                <div class="flex h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden">
+                    {/* 左侧固定极简导航图标栏 (完美对齐未来并入大系统的形态) */}
+                    <div class="w-16 bg-slate-900 border-r border-slate-800 flex flex-col items-center py-4 justify-between shrink-0">
+                        <div class="flex flex-col items-center gap-6 w-full">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md">Ops</div>
+                            <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 cursor-not-allowed text-xs"><i class="fa-solid fa-home"></i></div>
+                            <div class="w-10 h-10 rounded-xl bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center text-xs"><i class="fa-solid fa-brain"></i></div>
+                        </div>
+                        <div class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-slate-400">⚡</div>
+                    </div>
+
+                    {/* 右侧整体大工作台 */}
+                    <div class="flex-1 flex flex-col h-full overflow-hidden">
+                        {/* 顶部统一 Header & 核心智能助手切换组件 */}
+                        <header class="h-16 bg-slate-900/60 border-b border-slate-800 px-6 flex items-center justify-between shadow-sm shrink-0">
+                            <div class="flex items-center gap-4">
+                                <span class="text-xs text-slate-400 font-medium"><i class="fa-solid fa-sliders mr-1"></i> 场景助手切换:</span>
+                                
+                                {/* 核心切换器 (Tabs) */}
+                                <div class="bg-slate-950 p-1 rounded-xl flex gap-1 border border-slate-800/80">
+                                    <button onClick={() => setCurrentAssistant('rag')} 
+                                        class={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                            currentAssistant === 'rag' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>
+                                        <i class="fa-solid fa-robot text-[10px]"></i> 运维知识库 (RAG Flow)
+                                    </button>
+                                    <button onClick={() => setCurrentAssistant('jira')} 
+                                        class={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                            currentAssistant === 'jira' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>
+                                        <i class="fa-solid fa-chart-pie text-[10px]"></i> Jira 数据 Insight
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            {/* 服务API就绪状态 */}
+                            <div class="flex items-center gap-3 text-xs text-slate-400">
+                                <span class="flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded border border-slate-800"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> RAG 引擎已连</span>
+                                <span class="flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded border border-slate-800"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Jira API 正常</span>
+                            </div>
+                        </header>
+
+                        {/* 动态内容渲染区：根据顶部控制状态，渲染 A面 问答 或 B面 看板 */}
+                        {currentAssistant === 'rag' ? (
+                            <RagAssistantView activeRef={activeRef} setActiveRef={setActiveRef} />
+                        ) : (
+                            <JiraInsightView />
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // 兼容 React 18 标准挂载渲染
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
