@@ -1,57 +1,39 @@
-import { Message } from '../types/message'
-import { Task } from '../types/task'
+import { Message, JiraTicket } from '../types/index'
 
-export const mockMessages: Message[] = [
+export const initialMessages: Message[] = [
   {
-    id: '1',
-    role: 'system',
-    content: '你好！我是 RAG 助手，可以回答你的问题。',
-    timestamp: new Date('2024-01-01T10:00:00'),
-  },
-  {
-    id: '2',
+    id: 1,
     role: 'user',
-    content: '请解释什么是 React Hooks？',
-    timestamp: new Date('2024-01-01T10:01:00'),
+    content: '今天K8s集群节点报错 0/3 nodes are available: 3 Insufficient cpu. 怎么处理？',
   },
   {
-    id: '3',
+    id: 2,
     role: 'assistant',
-    content: 'React Hooks 是 React 16.8 引入的特性，让你可以在函数组件中使用 state 和其他 React 特性，而无需编写 class。常用的 Hooks 包括 useState、useEffect、useContext 等。',
-    timestamp: new Date('2024-01-01T10:01:30'),
+    content: '该错误表明您的 K8s 集群中没有任何节点具备足够的空闲 CPU 来调度新的 Pod。',
+    refs: [
+      {
+        title: '📄 核心集群故障排查预案.md',
+        score: '0.94',
+        text: '当集群出现 Insufficient cpu 时，优先排查高能耗非核心 Pod，或触发 HPA 与集群节点自动扩容策略。生产环境需紧急核对 Resource Request 配置...',
+      },
+      {
+        title: '📄 K8s资源调优规范_v2.pdf',
+        score: '0.81',
+        text: '过大的 Request CPU 会导致调度器拒绝排产。生产环境建议将 limit 与 request 的比例保持在 2:1 到 4:1 之间，避免资源超卖引发瘫痪。',
+      },
+    ],
   },
 ]
 
-export const mockTasks: Task[] = [
+export const jiraTickets: JiraTicket[] = [
   {
-    id: 'TASK-1',
-    title: '设计数据库 Schema',
-    description: '设计用户表和任务表的结构',
-    status: 'done',
-    priority: 'high',
-    assignee: 'Alice',
+    key: 'OPS-1024',
+    summary: '核心产线 MySQL 读写分离集群从库同步延迟严重',
+    assignee: '张大宝 (DBA)',
   },
   {
-    id: 'TASK-2',
-    title: '实现 API 接口',
-    description: '使用 Express 实现 RESTful API',
-    status: 'in_progress',
-    priority: 'high',
-    assignee: 'Bob',
-  },
-  {
-    id: 'TASK-3',
-    title: '编写单元测试',
-    description: '为核心业务逻辑编写测试用例',
-    status: 'todo',
-    priority: 'medium',
-    assignee: 'Charlie',
-  },
-  {
-    id: 'TASK-4',
-    title: '部署到生产环境',
-    description: '配置 CI/CD 流水线',
-    status: 'todo',
-    priority: 'low',
+    key: 'OPS-1192',
+    summary: '北京二区 VPC 网络安全组规则同步执行失败',
+    assignee: '李小强 (网络组)',
   },
 ]

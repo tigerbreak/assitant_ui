@@ -1,6 +1,6 @@
 # 1. OBJECTIVE
 
-将 `test.html` 单文件 HTML 原型（运维 AI 助手工作台）转化为基于 React 框架的工程化项目。采用 **Vite + React + TypeScript + TailwindCSS** 技术栈，参考 chatbot-ui 和 RAGFlow 的前端架构理念，保持原有 UI 样式不变。将 HTML 中的组件逐步拆解为独立 React 组件，通过分步实施帮助开发者系统学习 React 开发流程。
+将 `test.html` 单文件 HTML 原型（运维 AI 助手工作台）转化为基于 React 框架的工程化项目。**必须严格还原 test.html 的视觉效果和交互逻辑**，包括暗色主题、左侧导航栏、RAG 对话+引用抽屉、Jira 数据看板+统计图表等全部细节。采用 **Vite + React + TypeScript + TailwindCSS** 技术栈，参考 chatbot-ui 和 RAGFlow 的前端架构理念，通过分步实施帮助开发者系统学习 React 开发流程。
 
 # 2. CONTEXT SUMMARY
 
@@ -13,7 +13,7 @@
   - `ragflow` (infiniflow): React 前端 + 文档管理与对话界面
 * **技术选型**: Vite + React + TypeScript + TailwindCSS（轻量易学，适合从 HTML 渐进迁移）
 * **状态管理**: React Hooks (`useState`, `useContext`)，保持简单
-* **样式**: 保持 test.html 原有的 Tailwind 暗色主题（slate-950 背景），使用 CSS 动画
+* **样式**: 严格保持 test.html 原有的 Tailwind 暗色主题（slate-950 背景），使用 CSS 动画
 
 # 3. APPROACH OVERVIEW
 
@@ -72,7 +72,7 @@
   - **学习点**: TypeScript `interface`、可选属性 `?`、联合类型
 
 - **Step 2.2**: 创建 `src/data/mockData.ts`，将 test.html 中的硬编码数据提取为常量
-  - 包含初始对话消息、引用数据、Jira 工单数据
+  - 包含初始对话消息（OPS-1024 K8s 问题）、引用数据、Jira 工单数据（OPS-1024, OPS-1192）
   - **学习点**: 数据与 UI 分离、模块化导出 (`export`)
 
 ## Phase 3: 主框架 App 组件 —— "搭建页面骨架"
@@ -198,6 +198,13 @@ assitant_ui/
 # 5. TESTING AND VALIDATION
 
 * **开发阶段验证**: 每个 Phase 完成后运行 `npm run dev`，确认页面正常渲染，无 TypeScript 编译错误和运行时错误
+* **视觉一致性验证** (关键!):
+  - **暗色主题**: 背景必须是 `slate-950`（深灰近黑），不能是白色或浅灰色
+  - **左侧导航栏**: 必须有 `w-16` 宽度的左侧固定导航栏，包含 "Ops" 图标和功能图标
+  - **RAG 对话**: 消息气泡必须是暗色（`bg-slate-900`），用户气泡是蓝色（`bg-blue-600`）
+  - **知识库引用**: 消息下方必须有引用标签（含 `重合度` 分数），点击后右侧抽屉展开
+  - **Jira 看板**: 必须包含 AI Summary 三栏、统计柱状图/进度条、工单表格（OPS-1024, OPS-1192）
+  - **Tab 切换**: 必须是蓝色/靛蓝色胶囊式切换器（`bg-blue-600` / `bg-indigo-600`）
 * **RAG 视图验证**:
   - 默认显示初始对话消息（用户提问 + AI 回复含引用）
   - 输入新消息并发送，UI 立即追加用户消息
