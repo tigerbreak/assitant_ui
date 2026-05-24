@@ -92,10 +92,14 @@ npm -v     # 应输出 9.x 或更高
 **学习点**：`npm create vite` 使用脚手架快速生成项目骨架。`--template react-ts` 选择 React + TypeScript 模板。
 
 ```bash
-npm create vite@latest assistant-ui -- --template react-ts
+npm create vite@latest assistant-ui --template react-ts
 cd assistant-ui
 npm install
 ```
+
+> **⚠️ PowerShell 注意事项**：在 PowerShell 中 `--` 参数分隔符可能不会被正确识别。如果进入交互式选择界面，手动选择 **React** → **TypeScript** 即可。也可以用一行命令避免交互：`npm create vite@latest assistant-ui --template react-ts`（去掉 `--` 分隔符）。
+
+> **⚠️ 工作目录注意事项**：确保所有 `npm install` 命令都在 `assistant-ui/` 目录内执行。不要在父目录重复执行 `npm install`，否则会产生两套 `node_modules` 导致 React 版本冲突（报错："Invalid hook call"）。
 
 生成文件结构：
 ```
@@ -147,11 +151,26 @@ npm install @fortawesome/react-fontawesome @fortawesome/free-solid-svg-icons
 
 删除 `src/App.css` 和 `src/assets/`。
 
-修改 `src/index.css`：
+修改 `src/index.css`，**仅保留 Tailwind 入口和布局基础样式**，删除 Vite 模板自带的 `:root` 变量、`#root` 居中限制等冲突样式：
 
 ```css
 @import "tailwindcss";
+
+#root {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+}
 ```
+
+> **⚠️ `@import` 必须位于文件最顶部**：CSS 规范要求所有 `@import` 语句必须放在任何其他样式声明之前（除了 `@charset` 和 `@layer`）。
+
+> **⚠️ 必须清除 Vite 模板的 `#root` 默认样式**：Vite 生成的 `#root { width: 1126px; margin: 0 auto; }` 会限制布局宽度并居中，导致全屏布局（如 Sidebar 贴左、RefPanel 右侧抽屉）无法正常渲染。必须替换为 `width: 100%; height: 100vh;`。
 
 修改 `index.html`：
 
@@ -256,6 +275,16 @@ export const jiraTickets: JiraTicket[] = [
 ```
 
 **验证**：运行 `npx tsc --noEmit`，应无类型错误。
+
+> **⚠️ `verbatimModuleSyntax` 规则**：Vite 默认生成的 `tsconfig.app.json` 中启用了 `"verbatimModuleSyntax": true`，这意味着**纯类型导入必须使用 `import type`**。例如：
+> ```ts
+> // ✅ 正确
+> import type { Message, JiraTicket } from '../types/index'
+> 
+> // ❌ 错误 — 会报 "does not provide an export"
+> import { Message, JiraTicket } from '../types/index'
+> ```
+> 本 Guide 中的代码均使用正确的 `import type` 语法，请注意保持一致。
 
 ---
 
@@ -385,7 +414,22 @@ export default function App() {
 }
 ```
 
-**验证**：`npm run dev` 启动后，应看到暗色主题的全屏布局 + 左侧 "Ops" 导航 + 顶部 Tab 切换器。
+**验证**：需完成 Phase 4 和 Phase 5 创建所有子组件后才能看到完整页面。在此之前可临时注释掉尚未创建的组件导入和 JSX 引用来预览 Sidebar + Header：
+
+```tsx
+// 注释尚未创建的组件导入
+// import RagAssistantView from './components/rag/RagAssistantView'
+// import JiraInsightView from './components/jira/JiraInsightView'
+
+// 用 {/* */} 注释 JSX 中的组件引用（仅注释 import 不够，JSX 引用也会报错）
+{/*currentAssistant === 'rag' ? (
+  <RagAssistantView ... />
+) : (
+  <JiraInsightView />
+)*/}
+```
+
+> **关键概念**：JSX 中的 `{/* */}` 是 React 特有的注释语法——`{}` 表示 JS 表达式插值，`/* */` 是内部的块级注释。不要误写成 `<!-- -->` 或仅用 `/* */`。
 
 ---
 
@@ -1039,6 +1083,134 @@ const handleSend = async (text: string) => {
   }
 }
 ```
+
+---
+
+### Q7: 多层级 `node_modules` 冲突导致 "Invalid hook call"
+
+**现象**：页面报错 `Invalid hook call. Hooks can only be called inside of the body of a function component.`，同时控制台出现 `Cannot read properties of null (reading 'useId')`。
+
+**原因**：在项目目录**之外**（如父目录）也执行了 `npm install`，导致系统中存在两套 React。Vite 解析时可能加载了错误的 React 版本，Hook 内部状态不一致。
+
+**解决方案**：
+```bash
+# 1. 删除父目录多余的 node_modules 和 package.json
+Remove-Item -Recurse -Force ../node_modules
+Remove-Item -Force ../package.json
+Remove-Item -Force ../package-lock.json
+
+# 2. 在项目目录内重新安装
+cd assistant-ui
+npm install
+```
+
+**预防**：所有 `npm install` 操作始终在 `assistant-ui/` 目录内进行。
+
+### Q8: 导入类型时报错 "does not provide an export named 'X'"
+
+**现象**：`The requested module '...' does not provide an export named 'Reference'`。
+
+**原因**：`tsconfig.app.json` 中启用了 `"verbatimModuleSyntax": true`，要求纯类型（interface、type）必须用 `import type` 导入。
+
+**修复**：
+```tsx
+// ❌ 错误
+import { Reference } from './types/index'
+
+// ✅ 正确
+import type { Reference } from './types/index'
+```
+
+### Q9: 组件已注释导入但仍报错
+
+**现象**：注释了 `import` 语句后，页面仍然空白，控制台报 `ReferenceError: X is not defined`。
+
+**原因**：只注释了 `import`，但 JSX 中仍在使用该组件变量。JavaScript 模块加载失败或变量未定义时，**整个组件函数抛出异常**，导致已成功导入的组件也无法渲染。
+
+**修复**：JSX 中的组件引用也需要注释掉。JSX 注释使用 `{/* */}` 语法：
+
+```tsx
+// ✅ 正确：import 和 JSX 都注释
+// import MyComponent from './MyComponent'
+
+return (
+  <div>
+    <ExistingComponent />
+    {/*<MyComponent /> 同时也注释掉 JSX 引用*/}
+  </div>
+)
+```
+
+### Q10: 文件夹名拼写错误导致导入失败
+
+**现象**：`Cannot find module './components/Header'` 或类似错误，但文件明明存在。
+
+**排查**：用 `ls` 或文件管理器对比**实际文件夹名**与代码中的导入路径是否完全一致（区分大小写）。
+
+**示例**：
+```
+src/
+├── compoents/       ← ❌ 拼写错误（少了个 n）
+└── components/      ← ✅ 正确的拼写
+```
+
+### Q11: `npm create vite` 进入交互界面而非静默创建
+
+**现象**：运行 `npm create vite@latest assistant-ui -- --template react-ts` 后仍然弹出选择菜单。
+
+**原因**：PowerShell 中 `--` 参数分隔符可能不被正确识别。Vite 的 `create` 命令有多种写法：
+
+```bash
+# ✅ 方案一（推荐 PowerShell）：去掉 -- 分隔符
+npm create vite@latest assistant-ui --template react-ts
+
+# ✅ 方案二：使用 npx
+npx create-vite@latest assistant-ui --template react-ts
+
+# ✅ 方案三：手动选择（同样有效）
+npm create vite@latest
+# → 输入项目名: assistant-ui
+# → 选择框架: React
+# → 选择变体: TypeScript
+```
+
+### Q12: 页面左侧有空隙或 RefPanel 右侧抽屉不显示
+
+**现象**：页面整体居中，左侧 Sidebar 和左边缘之间有空白；点击引用标签后右侧 RefPanel 不弹出。
+
+**原因**：Vite 模板默认的 `index.css` 中 `#root` 设置了固定宽度和居中：
+
+```css
+/* ❌ Vite 默认样式 — 限制了全屏布局 */
+#root {
+  width: 1126px;          /* 固定宽度 */
+  margin: 0 auto;         /* 水平居中 */
+  text-align: center;     /* 文本居中 */
+  border-inline: 1px solid var(--border);
+}
+```
+
+当 App 需要全屏布局（`w-screen` / `h-screen`）时，`#root` 的宽度限制导致：
+- Sidebar 无法贴左（被居中布局推开）
+- RefPanel（w-80 = 320px）在聊天区域外没有渲染空间
+
+**修复**：将 `index.css` 的 `#root` 样式替换为全宽布局：
+
+```css
+/* ✅ 全屏布局 */
+#root {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+}
+```
+
+同时建议删除 `:root` 中 Vite 模板的 CSS 变量和 `h1`/`h2`/`code` 等多余样式，它们与 TailwindCSS 冲突且不会被使用。
 
 ---
 
