@@ -1,7 +1,7 @@
-# React 工程化项目实战 Guide
+# 运维 AI 助手工作台 — React 工程化项目实战 Guide
 
-> 从零基础到完整 React + TypeScript + TailwindCSS 项目  
-> 共 **6 个 Phase**，**18 个 Step**，最终产物：从单个 HTML 文件拆分为 11 个独立组件的工程化项目
+> 从 `test.html` 单文件原型到完整 React + TypeScript + TailwindCSS 工程化项目
+> 共 **6 个 Phase**，**18 个 Step**，严格还原原型的暗色主题、侧边导航、RAG 对话+引用抽屉、Jira 数据看板等全部视觉细节
 
 ---
 
@@ -16,28 +16,38 @@
 - [Phase 5: Jira 看板组件](#phase-5-jira-看板组件)
 - [Phase 6: 整合打磨](#phase-6-整合打磨)
 - [最终目录结构](#最终目录结构)
+- [测试验证清单](#测试验证清单)
 - [常见问题](#常见问题)
+- [下一步学习建议](#下一步学习建议)
 
 ---
 
 ## 概述
 
-本 Guide 带你从零开始，使用 **Vite + React + TypeScript + TailwindCSS** 搭建一个包含 **RAG 对话界面** 和 **Jira 看板** 的完整前端项目。
+本 Guide 带你将 `test.html` 单文件 HTML 原型转化为基于 **Vite + React + TypeScript + TailwindCSS** 的工程化项目。原型是一个运维 AI 助手工作台，包含两个核心视图：
+
+| 视图 | 功能 |
+|------|------|
+| **运维知识库 (RAG Flow)** | 对话界面 + 知识库引用召回 + 右侧引用详情抽屉 |
+| **Jira 数据 Insight** | AI Summary 三栏 + 统计柱状图/进度条 + 工单表格 + AI 提问面板 |
 
 **技术选型说明：**
 
 | 选择 | 原因 |
 |------|------|
-| Vite（而非 Next.js） | SPA 架构更直观，学习曲线平缓，无 SSR/路由复杂度 |
-| TypeScript | 提前定义数据结构，避免运行时错误，养成良好开发习惯 |
-| TailwindCSS | 原子化 CSS，快速构建 UI，无需手写复杂样式表 |
+| Vite（非 Next.js） | SPA 架构更直观，无 SSR/路由复杂度，与 `test.html` 浏览器渲染模式更接近 |
+| TypeScript | 提前定义数据结构（Message、Reference、JiraTicket），避免运行时错误 |
+| TailwindCSS v4 | 原子化 CSS，原型本身就用 Tailwind 类名，迁移成本最低 |
+| Font Awesome 6 | 原型中大量使用 FA 图标，迁移需保持一致 |
 
 **学习目标：**
 
-- 掌握 React 核心概念：JSX、组件、Props、State、Hooks
-- 理解 TypeScript 在前端项目中的实际应用
-- 学会工程化项目组织：类型、数据、组件分离
-- 从 `test.html` 单文件 → 拆分为 **11 个独立组件文件**
+- 掌握 React 核心概念：JSX、组件、Props、State、Hooks（`useState`）
+- 理解 TypeScript 在前端项目中的实际应用（interface、可选属性、联合类型）
+- 学会工程化项目组织：类型、数据、组件分层
+- 从 `test.html` 单文件 → 拆分为 **14 个独立组件文件**
+- 理解 HTML `class` → React `className` 的转换
+- 理解受控组件（Controlled Component）和事件处理
 
 ---
 
@@ -48,7 +58,7 @@
 | 工具 | 最低版本 | 用途 |
 |------|----------|------|
 | Node.js | 18.x+ | JavaScript 运行时 |
-| npm / pnpm | npm 9+ / pnpm 8+ | 包管理器 |
+| npm | 9+ | 包管理器 |
 | 编辑器 | VS Code（推荐） | 代码编辑 |
 | 浏览器 | Chrome / Edge | 开发调试 |
 
@@ -75,52 +85,39 @@ npm -v     # 应输出 9.x 或更高
 
 ## Phase 1: 项目初始化
 
-> **目标**：搭建 Vite + React + TypeScript + TailwindCSS 开发环境
+> **目标**：搭建 Vite + React + TypeScript + TailwindCSS + Font Awesome 开发环境
 
-### Step 1: 创建 Vite 项目 + 验证开发服务器
+### Step 1.1: 创建 Vite 项目
 
-**学习点**：理解 Vite 作为现代前端构建工具的作用——快速启动、热更新（HMR）、开箱即用的 TypeScript 支持。HMR 让你在修改代码后无需刷新浏览器即可看到变化。
+**学习点**：`npm create vite` 使用脚手架快速生成项目骨架。`--template react-ts` 选择 React + TypeScript 模板。
 
 ```bash
-# 使用 npm 创建项目
 npm create vite@latest assistant-ui -- --template react-ts
-
-# 进入项目目录
 cd assistant-ui
-
-# 安装依赖
 npm install
 ```
 
-**预期结果**：项目根目录下生成以下文件结构：
+生成文件结构：
 ```
 assistant-ui/
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-├── index.html
-├── src/
-│   ├── main.tsx
-│   ├── App.tsx
-│   ├── App.css
-│   └── assets/
+├── package.json          # 依赖管理、npm 脚本
+├── tsconfig.json         # TypeScript 编译配置
+├── vite.config.ts        # Vite 构建配置
+├── index.html            # SPA HTML 入口
+└── src/
+    ├── main.tsx          # React 入口
+    ├── App.tsx           # 根组件
+    ├── App.css           # （后续删除）
+    └── assets/           # （后续删除）
 ```
 
-启动开发服务器：
-```bash
-npm run dev
-```
+**验证**：运行 `npm run dev`，打开 `http://localhost:5173`，应看到 Vite 默认欢迎页。修改 `src/App.tsx` 的文字，保存后浏览器应即时更新（HMR 热更新）。
 
-打开浏览器访问 `http://localhost:5173`，应看到 Vite + React 的默认欢迎页面。
+### Step 1.2: 安装并配置 TailwindCSS
 
-**验证**：修改 `src/App.tsx` 中的文字，保存后浏览器应立即更新，无需手动刷新。
-
-### Step 2: 安装并配置 TailwindCSS
-
-**学习点**：TailwindCSS 是原子化 CSS 框架，通过 class 名直接应用样式，无需编写 CSS 文件。
+**学习点**：TailwindCSS 是原子化 CSS 框架，通过 class 名直接应用样式。v4 版本通过 Vite 插件集成，无需 postcss 配置。
 
 ```bash
-# 安装 TailwindCSS 及其依赖
 npm install -D tailwindcss @tailwindcss/vite
 ```
 
@@ -132,731 +129,757 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-  ],
+  plugins: [react(), tailwindcss()],
 })
 ```
 
-在 `src/index.css` 中引入 Tailwind（替换原有内容）：
+### Step 1.3: 安装 Font Awesome 图标库
+
+**学习点**：在 React 中使用 Font Awesome 需要安装 React 封装包 + 图标包。
+
+```bash
+npm install @fortawesome/react-fontawesome @fortawesome/free-solid-svg-icons
+```
+
+### Step 1.4: 清理模板 + 配置全局样式
+
+**学习点**：删除脚手架示例代码，保持项目整洁。`index.css` 是全局样式入口，`@import "tailwindcss"` 启用 Tailwind 工具类。
+
+删除 `src/App.css` 和 `src/assets/`。
+
+修改 `src/index.css`：
 
 ```css
 @import "tailwindcss";
 ```
 
-### Step 3: 清理模板代码
+修改 `index.html`：
 
-**学习点**：实际项目中需要删除脚手架生成的示例代码，保持项目整洁。
-
-删除以下文件：
-```bash
-rm src/App.css
-rm src/assets/react.svg
+```html
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>运维 AI 助手工作台</title>
+  </head>
+  <body class="bg-slate-950 text-slate-100 overflow-hidden">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
 ```
 
-将 `src/App.tsx` 简化为：
+> **关键差异**：注意 `class` 在 HTML 中使用，而 JSX 中要改用 `className`。
 
-```tsx
-function App() {
-  return (
-    <div className="min-h-screen bg-gray-100">
-      <h1 className="text-2xl font-bold text-center p-4">
-        Assistant UI
-      </h1>
-    </div>
-  )
-}
-
-export default App
-```
-
-**预期结果**：浏览器显示居中的 "Assistant UI" 标题，背景为浅灰色。
+**验证**：修改 `src/App.tsx` 为 `<div className="bg-slate-950 text-white p-4">Hello Ops</div>`，应看到深色背景上的白色文字。
 
 ---
 
 ## Phase 2: 类型定义
 
-> **目标**：使用 TypeScript 定义项目中的数据结构，理解类型安全的重要性
+> **目标**：使用 TypeScript 定义项目中的数据结构，养成"先定义数据，再写组件"的好习惯
 
-### Step 4: 定义消息类型
+### Step 2.1: 定义核心类型
 
-**学习点**：`interface` 用于定义对象结构；联合类型（`|`）用于限定取值范围；类型与数据分离是工程化的核心思想。
-
-创建 `src/types/message.ts`：
-
-```ts
-// 消息角色类型——限制只能为这三种值
-export type MessageRole = 'user' | 'assistant' | 'system'
-
-// 单条消息的结构
-export interface Message {
-  id: string
-  role: MessageRole
-  content: string
-  timestamp: Date
-}
-```
-
-### Step 5: 定义任务类型（Jira 看板用）
-
-**学习点**：`as const` 让 TypeScript 推断为字面量类型而非宽泛的 `string` 类型，提供更精确的类型检查。`?` 表示可选字段。
-
-创建 `src/types/task.ts`：
-
-```ts
-// 任务状态——使用 as const 确保类型精确
-export const TASK_STATUS = ['todo', 'in_progress', 'done'] as const
-export type TaskStatus = (typeof TASK_STATUS)[number]
-// 等价于：type TaskStatus = 'todo' | 'in_progress' | 'done'
-
-// 优先级
-export const TASK_PRIORITY = ['low', 'medium', 'high'] as const
-export type TaskPriority = (typeof TASK_PRIORITY)[number]
-
-// 任务结构
-export interface Task {
-  id: string
-  title: string
-  description: string
-  status: TaskStatus
-  priority: TaskPriority
-  assignee?: string  // ? 表示可选字段
-}
-```
-
-### Step 6: 创建模拟数据 + 索引文件
-
-**学习点**：将数据与 UI 代码分离，便于后续替换为真实 API 数据，同时方便测试。使用 barrel export（`export * from`）简化导入路径，这是工程化项目的常见做法。
-
-创建 `src/data/mockData.ts`：
-
-```ts
-import { Message } from '../types/message'
-import { Task } from '../types/task'
-
-export const mockMessages: Message[] = [
-  {
-    id: '1',
-    role: 'system',
-    content: '你好！我是 RAG 助手，可以回答你的问题。',
-    timestamp: new Date('2024-01-01T10:00:00'),
-  },
-  {
-    id: '2',
-    role: 'user',
-    content: '请解释什么是 React Hooks？',
-    timestamp: new Date('2024-01-01T10:01:00'),
-  },
-  {
-    id: '3',
-    role: 'assistant',
-    content: 'React Hooks 是 React 16.8 引入的特性，让你可以在函数组件中使用 state 和其他 React 特性，而无需编写 class。常用的 Hooks 包括 useState、useEffect、useContext 等。',
-    timestamp: new Date('2024-01-01T10:01:30'),
-  },
-]
-
-export const mockTasks: Task[] = [
-  {
-    id: 'TASK-1',
-    title: '设计数据库 Schema',
-    description: '设计用户表和任务表的结构',
-    status: 'done',
-    priority: 'high',
-    assignee: 'Alice',
-  },
-  {
-    id: 'TASK-2',
-    title: '实现 API 接口',
-    description: '使用 Express 实现 RESTful API',
-    status: 'in_progress',
-    priority: 'high',
-    assignee: 'Bob',
-  },
-  {
-    id: 'TASK-3',
-    title: '编写单元测试',
-    description: '为核心业务逻辑编写测试用例',
-    status: 'todo',
-    priority: 'medium',
-    assignee: 'Charlie',
-  },
-  {
-    id: 'TASK-4',
-    title: '部署到生产环境',
-    description: '配置 CI/CD 流水线',
-    status: 'todo',
-    priority: 'low',
-  },
-]
-```
+**学习点**：`interface` 用于定义对象结构；`?` 表示可选属性；联合类型（`|`）用于限定取值范围。将类型与 UI 代码分离，是工程化的核心思想。
 
 创建 `src/types/index.ts`：
 
 ```ts
-export * from './message'
-export * from './task'
+export interface Reference {
+  title: string    // 引用文档标题
+  score: string    // RAG 召回重合度（如 "0.94"）
+  text: string     // 分块切片内容
+}
+
+export interface Message {
+  id: number
+  role: 'user' | 'assistant'
+  content: string
+  refs?: Reference[]   // 可选：仅 assistant 消息有引用
+}
+
+export interface JiraTicket {
+  key: string      // 工单编号（如 "OPS-1024"）
+  summary: string  // 摘要
+  assignee: string // 负责人
+}
 ```
 
-创建 `src/data/index.ts`：
+### Step 2.2: 提取 Mock 数据
+
+**学习点**：数据与 UI 分离，后续替换为真实 API 时只需改数据源，不影响组件代码。
+
+创建 `src/data/mockData.ts`：
 
 ```ts
-export * from './mockData'
+import { Message, JiraTicket } from '../types/index'
+
+export const initialMessages: Message[] = [
+  {
+    id: 1,
+    role: 'user',
+    content: '今天K8s集群节点报错 0/3 nodes are available: 3 Insufficient cpu. 怎么处理？',
+  },
+  {
+    id: 2,
+    role: 'assistant',
+    content: '该错误表明您的 K8s 集群中没有任何节点具备足够的空闲 CPU 来调度新的 Pod。',
+    refs: [
+      {
+        title: '📄 核心集群故障排查预案.md',
+        score: '0.94',
+        text: '当集群出现 Insufficient cpu 时，优先排查高能耗非核心 Pod，或触发 HPA 与集群节点自动扩容策略。生产环境需紧急核对 Resource Request 配置...',
+      },
+      {
+        title: '📄 K8s资源调优规范_v2.pdf',
+        score: '0.81',
+        text: '过大的 Request CPU 会导致调度器拒绝排产。生产环境建议将 limit 与 request 的比例保持在 2:1 到 4:1 之间，避免资源超卖引发瘫痪。',
+      },
+    ],
+  },
+]
+
+export const jiraTickets: JiraTicket[] = [
+  {
+    key: 'OPS-1024',
+    summary: '核心产线 MySQL 读写分离集群从库同步延迟严重',
+    assignee: '张大宝 (DBA)',
+  },
+  {
+    key: 'OPS-1192',
+    summary: '北京二区 VPC 网络安全组规则同步执行失败',
+    assignee: '李小强 (网络组)',
+  },
+]
 ```
 
-**验证**：确保 TypeScript 编译无错误：
-```bash
-npx tsc --noEmit
-```
+**验证**：运行 `npx tsc --noEmit`，应无类型错误。
 
 ---
 
-## Phase 3: 主框架 App
+## Phase 3: 主框架 App 组件
 
-> **目标**：搭建应用整体布局，理解 JSX、Props、State 的基本用法
+> **目标**：迁移 `test.html` 的 App 主布局（左侧导航 + 顶部 Header + Tab 切换），理解组件拆分和 Props 传递
 
-### Step 7: 创建布局组件
+### Step 3.1: 创建 Sidebar 组件
 
-**学习点**：组件是 React 的基本构建块。`interface` 定义 Props 类型是 TypeScript + React 的标准做法。将 UI 拆分为独立组件可以提高代码复用性和可维护性。
+**学习点**：从 `test.html` 提取左侧 `w-16 bg-slate-900` 导航栏。`class` 改为 `className`，这是 JSX 语法要求。使用 `@fortawesome/react-fontawesome` 替代 `<i class="fa-solid fa-...">`。
 
-创建 `src/components/layout/Header.tsx`：
+创建 `src/components/Sidebar.tsx`：
 
 ```tsx
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faHome, faBrain } from '@fortawesome/free-solid-svg-icons'
+
+export default function Sidebar() {
+  return (
+    <div className="w-16 bg-slate-900 border-r border-slate-800 flex flex-col items-center py-4 justify-between shrink-0">
+      <div className="flex flex-col items-center gap-6 w-full">
+        <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md">Ops</div>
+        <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 cursor-not-allowed text-xs">
+          <FontAwesomeIcon icon={faHome} />
+        </div>
+        <div className="w-10 h-10 rounded-xl bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center text-xs">
+          <FontAwesomeIcon icon={faBrain} />
+        </div>
+      </div>
+      <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-slate-400">⚡</div>
+    </div>
+  )
+}
+```
+
+> **关键转换**：HTML 中的 `<i class="fa-solid fa-home"></i>` → React 中的 `<FontAwesomeIcon icon={faHome} />`
+
+### Step 3.2: 创建 Header 组件
+
+**学习点**：Props 类型定义 + 事件回调函数 props。Header 接收 `currentAssistant` 和 `onSwitch` 两个 props，实现受控的 Tab 切换。
+
+创建 `src/components/Header.tsx`：
+
+```tsx
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faSliders, faRobot, faChartPie } from '@fortawesome/free-solid-svg-icons'
+
 interface HeaderProps {
-  title: string
+  currentAssistant: string
+  onSwitch: (mode: string) => void
 }
 
-export function Header({ title }: HeaderProps) {
+export default function Header({ currentAssistant, onSwitch }: HeaderProps) {
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 py-4">
-        <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
+    <header className="h-16 bg-slate-900/60 border-b border-slate-800 px-6 flex items-center justify-between shadow-sm shrink-0">
+      <div className="flex items-center gap-4">
+        <span className="text-xs text-slate-400 font-medium">
+          <FontAwesomeIcon icon={faSliders} className="mr-1" /> 场景助手切换:
+        </span>
+        <div className="bg-slate-950 p-1 rounded-xl flex gap-1 border border-slate-800/80">
+          <button
+            onClick={() => onSwitch('rag')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              currentAssistant === 'rag'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <FontAwesomeIcon icon={faRobot} className="text-[10px]" /> 运维知识库 (RAG Flow)
+          </button>
+          <button
+            onClick={() => onSwitch('jira')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              currentAssistant === 'jira'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <FontAwesomeIcon icon={faChartPie} className="text-[10px]" /> Jira 数据 Insight
+          </button>
+        </div>
+      </div>
+      <div className="flex items-center gap-3 text-xs text-slate-400">
+        <span className="flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded border border-slate-800">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> RAG 引擎已连
+        </span>
+        <span className="flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded border border-slate-800">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Jira API 正常
+        </span>
       </div>
     </header>
   )
 }
 ```
 
-创建 `src/components/layout/TabNavigation.tsx`：
+### Step 3.3: 组装 App 主组件
 
-```tsx
-interface TabNavigationProps {
-  tabs: string[]
-  activeTab: string
-  onTabChange: (tab: string) => void
-}
-
-export function TabNavigation({ tabs, activeTab, onTabChange }: TabNavigationProps) {
-  return (
-    <nav className="flex border-b border-gray-200 bg-white">
-      {tabs.map((tab) => (
-        <button
-          key={tab}
-          onClick={() => onTabChange(tab)}
-          className={`px-4 py-3 text-sm font-medium transition-colors ${
-            activeTab === tab
-              ? 'border-b-2 border-blue-500 text-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          {tab}
-        </button>
-      ))}
-    </nav>
-  )
-}
-```
-
-### Step 8: 创建组件索引文件
-
-**学习点**：与 types/data 类似，为组件也创建统一的导出入口（barrel export），简化后续导入路径。
-
-创建 `src/components/layout/index.ts`：
-
-```ts
-export { Header } from './Header'
-export { TabNavigation } from './TabNavigation'
-```
-
-### Step 9: 组装 App 主组件
-
-**学习点**：`useState` 是 React 最常用的 Hook，用于在函数组件中添加状态。状态变化会触发组件重新渲染。`useState<string>` 的泛型标注让 TypeScript 推断出 `activeTab` 是 `string` 类型。
+**学习点**：`useState` Hook 管理 `currentAssistant` 和 `activeRef` 状态。条件渲染：`currentAssistant === 'rag' ? <RagAssistantView/> : <JiraInsightView/>`。
 
 修改 `src/App.tsx`：
 
 ```tsx
 import { useState } from 'react'
-import { Header } from './components/layout/Header'
-import { TabNavigation } from './components/layout/TabNavigation'
+import Sidebar from './components/Sidebar'
+import Header from './components/Header'
+import RagAssistantView from './components/rag/RagAssistantView'
+import JiraInsightView from './components/jira/JiraInsightView'
+import { Reference } from './types/index'
 
-function App() {
-  const [activeTab, setActiveTab] = useState<string>('RAG Chat')
-
-  const tabs = ['RAG Chat', 'Jira Board']
-
-  return (
-    <div className="min-h-screen bg-gray-100">
-      <Header title="Assistant UI" />
-      <TabNavigation
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-600">
-            当前选中: <span className="font-medium text-blue-600">{activeTab}</span>
-          </p>
-        </div>
-      </main>
-    </div>
-  )
-}
-
-export default App
-```
-
-**预期结果**：页面顶部显示 Header，下方有两个可点击的 Tab，点击切换高亮状态，内容区域显示当前选中的 Tab 名称。
-
----
-
-## Phase 4: RAG 对话组件
-
-> **目标**：实现完整的对话界面，理解受控组件、条件渲染、数组状态更新
-
-### Step 10: 创建消息气泡组件
-
-**学习点**：条件渲染——根据不同角色显示不同的样式。模板字符串动态拼接 className 是 React + Tailwind 中常见的模式。
-
-创建 `src/components/chat/MessageBubble.tsx`：
-
-```tsx
-import { Message } from '../../types/message'
-
-interface MessageBubbleProps {
-  message: Message
-}
-
-export function MessageBubble({ message }: MessageBubbleProps) {
-  const isUser = message.role === 'user'
+export default function App() {
+  const [currentAssistant, setCurrentAssistant] = useState('rag')
+  const [activeRef, setActiveRef] = useState<Reference | null>(null)
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
-      <div
-        className={`max-w-[70%] rounded-lg px-4 py-2 ${
-          isUser
-            ? 'bg-blue-500 text-white'
-            : 'bg-gray-200 text-gray-900'
-        }`}
-      >
-        <p className="text-sm">{message.content}</p>
-        <p className={`text-xs mt-1 ${isUser ? 'text-blue-100' : 'text-gray-500'}`}>
-          {message.timestamp.toLocaleTimeString()}
-        </p>
+    <div className="flex h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden">
+      <Sidebar />
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        <Header currentAssistant={currentAssistant} onSwitch={setCurrentAssistant} />
+        {currentAssistant === 'rag' ? (
+          <RagAssistantView activeRef={activeRef} setActiveRef={setActiveRef} />
+        ) : (
+          <JiraInsightView />
+        )}
       </div>
     </div>
   )
 }
 ```
 
-### Step 11: 创建输入框组件
+**验证**：`npm run dev` 启动后，应看到暗色主题的全屏布局 + 左侧 "Ops" 导航 + 顶部 Tab 切换器。
 
-**学习点**：受控组件——输入框的值由 React state 控制，而非 DOM 自身。`onSubmit` 中 `e.preventDefault()` 阻止表单默认提交行为。`disabled` 属性控制按钮和输入框的可用状态。
+---
 
-创建 `src/components/chat/ChatInput.tsx`：
+## Phase 4: RagAssistantView 组件
 
-```tsx
-import { useState } from 'react'
+> **目标**：完整迁移 RAG 知识库对话组件，学习 State 管理、受控组件、条件渲染
 
-interface ChatInputProps {
-  onSend: (content: string) => void
-  isLoading?: boolean
-}
+### Step 4.1: 创建 MessageBubble 组件
 
-export function ChatInput({ onSend, isLoading = false }: ChatInputProps) {
-  const [input, setInput] = useState('')
+**学习点**：条件样式渲染（用户蓝色气泡 vs AI 暗色气泡）、Props 传递深度、`.map()` 渲染引用标签。
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (input.trim() && !isLoading) {
-      onSend(input.trim())
-      setInput('')
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
-      <input
-        type="text"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="输入你的问题..."
-        disabled={isLoading}
-        className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-      />
-      <button
-        type="submit"
-        disabled={isLoading || !input.trim()}
-        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      >
-        {isLoading ? '思考中...' : '发送'}
-      </button>
-    </form>
-  )
-}
-```
-
-### Step 12: 创建聊天容器组件 + 索引文件
-
-**学习点**：数组状态更新——使用 `setMessages([...messages, newMessage])` 添加新消息。必须创建新数组而非修改原数组（React 通过引用比较检测变化）。函数式更新 `setMessages((prev) => [...prev, newMessage])` 确保基于最新状态计算。
-
-创建 `src/components/chat/ChatContainer.tsx`：
+创建 `src/components/rag/MessageBubble.tsx`：
 
 ```tsx
-import { useState } from 'react'
-import { Message } from '../../types/message'
-import { mockMessages } from '../../data/mockData'
-import { MessageBubble } from './MessageBubble'
-import { ChatInput } from './ChatInput'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faBookOpen } from '@fortawesome/free-solid-svg-icons'
+import { Message, Reference } from '../../types/index'
 
-export function ChatContainer() {
-  const [messages, setMessages] = useState<Message[]>(mockMessages)
-  const [isLoading, setIsLoading] = useState(false)
+interface MessageBubbleProps {
+  message: Message
+  onRefClick: (ref: Reference) => void
+}
 
-  const handleSend = (content: string) => {
-    // 添加用户消息
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content,
-      timestamp: new Date(),
-    }
-    setMessages([...messages, userMessage])
-
-    // 模拟 AI 回复
-    setIsLoading(true)
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: `这是对"${content}"的模拟回复。在实际项目中，这里会调用 RAG API。`,
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, aiMessage])
-      setIsLoading(false)
-    }, 1000)
-  }
-
+export default function MessageBubble({ message, onRefClick }: MessageBubbleProps) {
   return (
-    <div className="flex flex-col h-[calc(100vh-200px)]">
-      {/* 消息列表 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
-        ))}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-gray-200 rounded-lg px-4 py-2">
-              <div className="flex gap-1">
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-              </div>
+    <div className={`flex gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+      {message.role === 'assistant' && (
+        <div className="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center text-sm shrink-0">🤖</div>
+      )}
+      <div className={`p-4 rounded-xl max-w-2xl text-sm leading-relaxed ${
+        message.role === 'user'
+          ? 'bg-blue-600 text-white rounded-tr-none'
+          : 'bg-slate-900 border border-slate-800 rounded-tl-none'
+      }`}>
+        <p className="whitespace-pre-line">{message.content}</p>
+        {message.refs && (
+          <div className="mt-4 pt-3 border-t border-slate-800">
+            <div className="text-xs text-slate-500 font-semibold mb-2">
+              <FontAwesomeIcon icon={faBookOpen} className="mr-1" /> 知识库参考来源 (RAG 召回明细)：
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {message.refs.map((ref, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => onRefClick(ref)}
+                  className="text-xs bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 px-2 py-1 rounded transition-colors flex items-center gap-1.5"
+                >
+                  {ref.title}
+                  <span className="bg-blue-500/20 text-[10px] px-1 rounded text-blue-300">重合度: {ref.score}</span>
+                </button>
+              ))}
             </div>
           </div>
         )}
       </div>
+    </div>
+  )
+}
+```
 
-      {/* 输入区域 */}
-      <div className="border-t border-gray-200 p-4 bg-white">
-        <ChatInput onSend={handleSend} isLoading={isLoading} />
+> **关键概念**：`onRefClick` 是一个回调函数 prop，从深层子组件向上传递事件，这是 React "数据流向下、事件流向上" 的核心模式。
+
+### Step 4.2: 创建 ChatInput 组件
+
+**学习点**：受控组件（`value` + `onChange` 绑定 state）、键盘事件处理（`onKeyDown` 检测 Enter 键）。
+
+创建 `src/components/rag/ChatInput.tsx`：
+
+```tsx
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faPaperPlane } from '@fortawesome/free-solid-svg-icons'
+import { useState, KeyboardEvent } from 'react'
+
+interface ChatInputProps {
+  onSend: (text: string) => void
+}
+
+export default function ChatInput({ onSend }: ChatInputProps) {
+  const [input, setInput] = useState('')
+
+  const handleSend = () => {
+    if (!input.trim()) return
+    onSend(input.trim())
+    setInput('')
+  }
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') handleSend()
+  }
+
+  return (
+    <div className="p-4 bg-slate-900/30 border-t border-slate-800">
+      <div className="max-w-3xl mx-auto relative flex items-center">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="输入运维故障表现、配置命令查询... (如：网关超时504怎么排查？)"
+          className="w-full bg-slate-900 border border-slate-800 pl-4 pr-12 py-3 rounded-xl focus:outline-none focus:border-blue-500 text-sm shadow-inner text-slate-200"
+        />
+        <button
+          onClick={handleSend}
+          className="absolute right-3 p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+        >
+          <FontAwesomeIcon icon={faPaperPlane} className="text-xs" />
+        </button>
       </div>
     </div>
   )
 }
 ```
 
-创建 `src/components/chat/index.ts`：
+> **关键概念**：受控组件中 `<input>` 的 `value` 绑定到 `input` state，`onChange` 更新 state。这使 React 完全掌控输入框的值。
 
-```ts
-export { MessageBubble } from './MessageBubble'
-export { ChatInput } from './ChatInput'
-export { ChatContainer } from './ChatContainer'
+### Step 4.3: 创建 RefPanel 组件（右侧引用抽屉）
+
+**学习点**：联合类型 Props（`Reference | null`）、条件渲染（`if (!activeRef) return null`）。
+
+创建 `src/components/rag/RefPanel.tsx`：
+
+```tsx
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faFileLines, faXmark, faCopy, faArrowUpRightFromSquare } from '@fortawesome/free-solid-svg-icons'
+import { Reference } from '../../types/index'
+
+interface RefPanelProps {
+  activeRef: Reference | null
+  onClose: () => void
+}
+
+export default function RefPanel({ activeRef, onClose }: RefPanelProps) {
+  if (!activeRef) return null
+
+  return (
+    <div className="w-80 bg-slate-900 p-4 flex flex-col justify-between border-l border-slate-800 animate-fade-in">
+      <div>
+        <div className="flex justify-between items-center pb-3 border-b border-slate-800 mb-4">
+          <span className="text-xs font-bold text-slate-400">
+            <FontAwesomeIcon icon={faFileLines} className="mr-1" /> 原始分块切片 (Chunk)
+          </span>
+          <button onClick={onClose} className="text-slate-500 hover:text-white text-xs">
+            <FontAwesomeIcon icon={faXmark} />
+          </button>
+        </div>
+        <h4 className="text-sm font-bold text-blue-400 mb-2">{activeRef.title}</h4>
+        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs text-slate-300 leading-relaxed max-h-[400px] overflow-y-auto">
+          {activeRef.text}
+        </div>
+      </div>
+      <div className="flex gap-2 pt-3 border-t border-slate-800 mt-4">
+        <button className="flex-1 bg-blue-600/10 border border-blue-500/20 text-blue-400 text-xs py-2 rounded-lg hover:bg-blue-600/20 transition-colors">
+          <FontAwesomeIcon icon={faCopy} className="mr-1" /> 复制引用
+        </button>
+        <button className="flex-1 bg-slate-800 border border-slate-700 text-slate-300 text-xs py-2 rounded-lg hover:bg-slate-700 transition-colors">
+          <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="mr-1" /> 查看原文
+        </button>
+      </div>
+    </div>
+  )
+}
 ```
 
-**预期结果**：切换到 "RAG Chat" Tab 时，可以看到对话界面，包含历史消息、输入框和发送按钮。发送消息后，1 秒后会收到模拟的 AI 回复。
+### Step 4.4: 创建 RagAssistantView 组装
+
+**学习点**：数组状态更新（`setMessages([...messages, newMsg])` 创建新数组触发重新渲染）、`setTimeout` 异步模拟 AI 响应。
+
+创建 `src/components/rag/RagAssistantView.tsx`：
+
+```tsx
+import { useState } from 'react'
+import { Message, Reference } from '../../types/index'
+import { initialMessages } from '../../data/mockData'
+import MessageBubble from './MessageBubble'
+import ChatInput from './ChatInput'
+import RefPanel from './RefPanel'
+
+interface RagAssistantViewProps {
+  activeRef: Reference | null
+  setActiveRef: (ref: Reference | null) => void
+}
+
+export default function RagAssistantView({ activeRef, setActiveRef }: RagAssistantViewProps) {
+  const [messages, setMessages] = useState<Message[]>(initialMessages)
+
+  const handleSend = (text: string) => {
+    setMessages([...messages, { id: Date.now(), role: 'user', content: text }])
+    setTimeout(() => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          role: 'assistant',
+          content: `正在检索企业运维知识库...\n针对您询问的 "${text}"，已定位到相关网络和安全组配置。`,
+          refs: [
+            {
+              title: '📄 生产网络拓扑与策略配置指南.docx',
+              score: '0.89',
+              text: '区域网络突发无法连接时，需核对核心交换机 ACL 规则...',
+            },
+          ],
+        },
+      ])
+    }, 800)
+  }
+
+  return (
+    <div className="flex-1 flex h-full animate-fade-in">
+      <div className="flex-1 flex flex-col h-full border-r border-slate-800">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {messages.map((msg) => (
+            <MessageBubble key={msg.id} message={msg} onRefClick={setActiveRef} />
+          ))}
+        </div>
+        <ChatInput onSend={handleSend} />
+      </div>
+      <RefPanel activeRef={activeRef} onClose={() => setActiveRef(null)} />
+    </div>
+  )
+}
+```
+
+**验证**：切换到 RAG 视图，应看到初始对话消息。输入文字发送后，用户消息立即出现，800ms 后 AI 回复出现。点击引用标签，右侧抽屉展开。
 
 ---
 
-## Phase 5: Jira 看板组件
+## Phase 5: JiraInsightView 组件
 
-> **目标**：实现看板界面，理解 Grid 布局、map 渲染列表、内联样式
+> **目标**：迁移 Jira 数据看板，学习组件化展示静态数据、内联样式与 Tailwind 混合使用
 
-### Step 13: 创建任务卡片组件
+### Step 5.1: 创建 AISummary 组件
 
-**学习点**：内联样式 `style` prop——对于动态计算的样式（如优先级颜色），使用内联样式。Tailwind 适合静态样式，内联样式适合动态值。理解两者的适用场景。
+**学习点**：网格布局（`grid grid-cols-3`）、组件内数据展示、数据驱动渲染。
 
-创建 `src/components/board/TaskCard.tsx`：
+创建 `src/components/jira/AISummary.tsx`：
 
 ```tsx
-import { Task } from '../../types/task'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faTriangleExclamation, faStopwatch, faShieldHalved } from '@fortawesome/free-solid-svg-icons'
 
-interface TaskCardProps {
-  task: Task
-}
+export default function AISummary() {
+  const cards = [
+    { icon: faTriangleExclamation, color: 'text-red-400', bg: 'bg-red-600/10 border-red-500/20', title: '趋势预警', content: '本周工单激增 38%，主要集中在数据库同步延迟与 VPC 策略下发。' },
+    { icon: faStopwatch, color: 'text-amber-400', bg: 'bg-amber-600/10 border-amber-500/20', title: '效能瓶颈', content: '平均 MTTR 由 1.2h 上升至 2.4h，瓶颈在于跨部门协同审批流程过长。' },
+    { icon: faShieldHalved, color: 'text-emerald-400', bg: 'bg-emerald-600/10 border-emerald-500/20', title: '风险规避', content: '建议开启变更冻结窗口：禁止非核心变更上线，直至 OPS-1024 和 OPS-1192 闭环。' },
+  ]
 
-const priorityColors: Record<string, string> = {
-  high: '#ef4444',    // red-500
-  medium: '#f59e0b',  // amber-500
-  low: '#22c55e',     // green-500
-}
-
-const priorityLabels: Record<string, string> = {
-  high: '高',
-  medium: '中',
-  low: '低',
-}
-
-export function TaskCard({ task }: TaskCardProps) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-      {/* 标题行 */}
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <span className="text-xs font-mono text-gray-500">{task.id}</span>
-        <span
-          className="text-xs px-2 py-0.5 rounded-full text-white"
-          style={{ backgroundColor: priorityColors[task.priority] }}
-        >
-          {priorityLabels[task.priority]}
-        </span>
-      </div>
-
-      {/* 标题 */}
-      <h3 className="text-sm font-medium text-gray-900 mb-1">{task.title}</h3>
-
-      {/* 描述 */}
-      {task.description && (
-        <p className="text-xs text-gray-500 mb-3 line-clamp-2">{task.description}</p>
-      )}
-
-      {/* 负责人 */}
-      {task.assignee && (
-        <div className="flex items-center gap-1">
-          <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium">
-            {task.assignee.charAt(0)}
+    <div className="p-4 bg-slate-900/30 border-b border-slate-800">
+      <div className="grid grid-cols-3 gap-4">
+        {cards.map((card, idx) => (
+          <div key={idx} className={`p-4 rounded-xl border ${card.bg}`}>
+            <div className={`text-sm font-bold mb-2 ${card.color}`}>
+              <FontAwesomeIcon icon={card.icon} className="mr-1.5" /> {card.title}
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">{card.content}</p>
           </div>
-          <span className="text-xs text-gray-600">{task.assignee}</span>
-        </div>
-      )}
-    </div>
-  )
-}
-```
-
-### Step 14: 创建看板列组件
-
-**学习点**：`Array.prototype.filter` + `map` 组合是 React 中渲染列表的标准模式。先用 `filter` 筛选数据，再用 `map` 生成 JSX。空列表的 fallback 渲染也是常见模式。
-
-创建 `src/components/board/BoardColumn.tsx`：
-
-```tsx
-import { Task, TaskStatus } from '../../types/task'
-import { TaskCard } from './TaskCard'
-
-interface BoardColumnProps {
-  status: TaskStatus
-  tasks: Task[]
-}
-
-const statusConfig: Record<TaskStatus, { title: string; bgColor: string }> = {
-  todo: { title: '待办', bgColor: 'bg-gray-100' },
-  in_progress: { title: '进行中', bgColor: 'bg-blue-50' },
-  done: { title: '已完成', bgColor: 'bg-green-50' },
-}
-
-export function BoardColumn({ status, tasks }: BoardColumnProps) {
-  const config = statusConfig[status]
-  const filteredTasks = tasks.filter((task) => task.status === status)
-
-  return (
-    <div className={`${config.bgColor} rounded-lg p-4`}>
-      {/* 列标题 */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-medium text-gray-900">{config.title}</h2>
-        <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full">
-          {filteredTasks.length}
-        </span>
-      </div>
-
-      {/* 任务列表 */}
-      <div className="space-y-3">
-        {filteredTasks.map((task) => (
-          <TaskCard key={task.id} task={task} />
         ))}
-        {filteredTasks.length === 0 && (
-          <p className="text-sm text-gray-400 text-center py-4">暂无任务</p>
-        )}
       </div>
     </div>
   )
 }
 ```
 
-### Step 15: 创建看板容器 + 索引文件
+### Step 5.2: 创建 StatsCards 组件
 
-**学习点**：Grid 响应式布局——`grid-cols-1 md:grid-cols-3` 表示移动端单列，中屏及以上三列。遍历 `TASK_STATUS` 常量数组生成列，保持数据驱动。
+**学习点**：内联样式（`style={{ width: '40%' }}`）与 Tailwind 类名混合使用。纯 CSS 柱状图/进度条替代图表库。
 
-创建 `src/components/board/BoardContainer.tsx`：
+创建 `src/components/jira/StatsCards.tsx`：
 
 ```tsx
-import { TASK_STATUS } from '../../types/task'
-import { mockTasks } from '../../data/mockData'
-import { BoardColumn } from './BoardColumn'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faTicket, faClock, faChartBar } from '@fortawesome/free-solid-svg-icons'
 
-export function BoardContainer() {
+export default function StatsCards() {
+  const stats = [
+    { icon: faTicket, label: '未解决工单', value: '23', color: 'text-rose-400', bgColor: 'bg-rose-600/10', borderColor: 'border-rose-500/20' },
+    { icon: faClock, label: 'MTTR (平均修复时间)', value: '2.4h', color: 'text-amber-400', bgColor: 'bg-amber-600/10', borderColor: 'border-amber-500/20' },
+    { icon: faChartBar, label: '风险分类占比', value: '高危 38%', color: 'text-emerald-400', bgColor: 'bg-emerald-600/10', borderColor: 'border-emerald-500/20' },
+  ]
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {TASK_STATUS.map((status) => (
-        <BoardColumn key={status} status={status} tasks={mockTasks} />
-      ))}
+    <div className="p-4 bg-slate-900/30 border-b border-slate-800">
+      <div className="grid grid-cols-3 gap-4">
+        {stats.map((stat, idx) => (
+          <div key={idx} className={`p-4 rounded-xl border ${stat.bgColor} ${stat.borderColor}`}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs text-slate-400">{stat.label}</span>
+              <FontAwesomeIcon icon={stat.icon} className={`${stat.color} text-sm`} />
+            </div>
+            <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+            {idx === 2 && (
+              <div className="mt-3">
+                <div className="flex justify-between text-[10px] text-slate-500 mb-1"><span>高危</span><span>中危</span><span>低危</span></div>
+                <div className="flex gap-1 h-2">
+                  <div className="bg-rose-500 rounded-l" style={{ width: '38%' }} />
+                  <div className="bg-amber-500" style={{ width: '40%' }} />
+                  <div className="bg-emerald-500 rounded-r" style={{ width: '22%' }} />
+                </div>
+              </div>
+            )}
+            {idx === 0 && (
+              <div className="mt-2">
+                <div className="flex justify-between text-[10px] text-slate-500 mb-1"><span>本周趋势</span></div>
+                <div className="flex gap-1 items-end h-6">
+                  <div className="bg-rose-500/60 rounded" style={{ width: '14%', height: '40%' }} />
+                  <div className="bg-rose-500/60 rounded" style={{ width: '14%', height: '60%' }} />
+                  <div className="bg-rose-500/60 rounded" style={{ width: '14%', height: '45%' }} />
+                  <div className="bg-rose-500/60 rounded" style={{ width: '14%', height: '75%' }} />
+                  <div className="bg-rose-500/60 rounded" style={{ width: '14%', height: '55%' }} />
+                  <div className="bg-rose-500/60 rounded" style={{ width: '14%', height: '85%' }} />
+                  <div className="bg-rose-500 rounded" style={{ width: '14%', height: '100%' }} />
+                </div>
+              </div>
+            )}
+            {idx === 1 && (
+              <div className="mt-2">
+                <div className="flex justify-between text-[10px] text-slate-500 mb-1"><span>目标: 1.5h</span></div>
+                <div className="w-full bg-slate-800 rounded h-2">
+                  <div className="bg-amber-500 rounded h-2" style={{ width: '80%' }} />
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 ```
 
-创建 `src/components/board/index.ts`：
+### Step 5.3: 创建 TicketTable 组件
 
-```ts
-export { TaskCard } from './TaskCard'
-export { BoardColumn } from './BoardColumn'
-export { BoardContainer } from './BoardContainer'
+**学习点**：`map()` 渲染表格行、`key` prop 的重要性（每个 `<tr>` 必须有唯一的 `key`）。
+
+创建 `src/components/jira/TicketTable.tsx`：
+
+```tsx
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faWandMagicSparkles } from '@fortawesome/free-solid-svg-icons'
+import { JiraTicket } from '../../types/index'
+
+interface TicketTableProps {
+  tickets: JiraTicket[]
+}
+
+export default function TicketTable({ tickets }: TicketTableProps) {
+  return (
+    <div className="p-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-bold text-slate-300">
+          <FontAwesomeIcon icon={faWandMagicSparkles} className="mr-1.5 text-indigo-400" /> 工单列表
+        </h3>
+        <span className="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded">共 {tickets.length} 条</span>
+      </div>
+      <div className="overflow-x-auto rounded-lg border border-slate-800">
+        <table className="w-full text-sm text-left">
+          <thead className="text-xs text-slate-400 uppercase bg-slate-900/50">
+            <tr><th className="p-3">工单编号</th><th className="p-3">摘要</th><th className="p-3">负责人</th><th className="p-3 text-center">AI 操作</th></tr>
+          </thead>
+          <tbody>
+            {tickets.map((ticket) => (
+              <tr key={ticket.key} className="hover:bg-slate-800/30 transition-colors border-t border-slate-800/50">
+                <td className="p-3 font-mono text-indigo-400">{ticket.key}</td>
+                <td className="p-3">{ticket.summary}</td>
+                <td className="p-3 text-slate-300">{ticket.assignee}</td>
+                <td className="p-3 text-center">
+                  <button className="bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white px-2 py-0.5 rounded transition-all text-[11px]">
+                    <FontAwesomeIcon icon={faWandMagicSparkles} className="mr-1" /> AI 诊断
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
 ```
 
-**预期结果**：切换到 "Jira Board" Tab 时，可以看到三列看板（待办、进行中、已完成），每列显示对应状态的任务卡片，卡片带有优先级颜色标签。
+### Step 5.4: 创建 JiraQuestionPanel 组件
+
+**学习点**：组件复用思想——该组件与 `ChatInput` 结构相似（输入框 + 发送按钮），但使用 indigo 主题色。
+
+创建 `src/components/jira/JiraQuestionPanel.tsx`：
+
+```tsx
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faNetworkWired, faLink } from '@fortawesome/free-solid-svg-icons'
+
+export default function JiraQuestionPanel() {
+  return (
+    <div className="w-80 bg-slate-900 border-l border-slate-800 flex flex-col justify-between">
+      <div className="p-4 space-y-4">
+        <div className="text-xs font-bold text-slate-400 pb-2 border-b border-slate-800">
+          <FontAwesomeIcon icon={faNetworkWired} className="mr-1" /> Jira 提问上下文
+        </div>
+        <div className="bg-slate-950 p-3 rounded-lg border border-indigo-500/10 text-xs text-slate-400 leading-relaxed">
+          <span className="text-emerald-400"><FontAwesomeIcon icon={faLink} className="mr-1" /> 已自动绑定：</span>当前看板所关联的 142 项迭代效能数据流与 Jira REST API。
+        </div>
+        <div className="text-xs text-slate-500">
+          <span className="text-slate-400 font-semibold block mb-1">💡 快捷输入提示：</span>
+          尝试输入："分析 OPS-1024 为什么超时？"
+        </div>
+      </div>
+      <div className="p-4 bg-slate-950/40 border-t border-slate-800">
+        <div className="relative flex items-center">
+          <input type="text" placeholder="对当前 Jira 看板数据继续追问..."
+            className="w-full bg-slate-950 border border-slate-800 pl-3 pr-10 py-2.5 rounded-lg focus:outline-none focus:border-indigo-500 text-xs text-slate-200" />
+          <button className="absolute right-2.5 p-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded transition-colors text-xs">➔</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+### Step 5.5: 创建 JiraInsightView 组装
+
+**学习点**：组件嵌套、Flex 布局组合（左侧 flex-1 数据看板 + 右侧 w-80 提问面板）。
+
+创建 `src/components/jira/JiraInsightView.tsx`：
+
+```tsx
+import { jiraTickets } from '../../data/mockData'
+import AISummary from './AISummary'
+import StatsCards from './StatsCards'
+import TicketTable from './TicketTable'
+import JiraQuestionPanel from './JiraQuestionPanel'
+
+export default function JiraInsightView() {
+  return (
+    <div className="flex-1 flex h-full animate-fade-in">
+      <div className="flex-1 flex flex-col h-full overflow-y-auto border-r border-slate-800">
+        <AISummary />
+        <StatsCards />
+        <TicketTable tickets={jiraTickets} />
+      </div>
+      <JiraQuestionPanel />
+    </div>
+  )
+}
+```
+
+**验证**：切换到 Jira 视图，应看到 AI Summary 三栏卡片、统计柱状图/进度条、工单表格（OPS-1024 + OPS-1192）、右侧提问面板。
 
 ---
 
 ## Phase 6: 整合打磨
 
-> **目标**：将所有组件整合到 App 中，添加动画效果，端到端验证
+> **目标**：整合所有组件，添加动画，端到端验证完整功能
 
-### Step 16: 整合所有组件到 App
+### Step 6.1: 添加 CSS 自定义动画
 
-**学习点**：条件渲染——根据 Tab 状态决定显示哪个组件（`&&` 运算符）。这是 SPA 中最基础的路由实现方式。对比 Phase 3 的占位内容，现在替换为真实组件。
+**学习点**：Tailwind 内置动画（`animate-pulse`、`animate-bounce`）满足部分场景。复杂动画通过 `@keyframes` 自定义。
 
-修改 `src/App.tsx`：
-
-```tsx
-import { useState } from 'react'
-import { Header } from './components/layout/Header'
-import { TabNavigation } from './components/layout/TabNavigation'
-import { ChatContainer } from './components/chat/ChatContainer'
-import { BoardContainer } from './components/board/BoardContainer'
-
-function App() {
-  const [activeTab, setActiveTab] = useState<string>('RAG Chat')
-
-  const tabs = ['RAG Chat', 'Jira Board']
-
-  return (
-    <div className="min-h-screen bg-gray-100">
-      <Header title="Assistant UI" />
-      <TabNavigation
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        {activeTab === 'RAG Chat' && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <ChatContainer />
-          </div>
-        )}
-        {activeTab === 'Jira Board' && (
-          <BoardContainer />
-        )}
-      </main>
-    </div>
-  )
-}
-
-export default App
-```
-
-### Step 17: 添加 CSS 动画
-
-**学习点**：Tailwind 内置了一些动画工具类（如 `animate-bounce`、`animate-pulse`）。复杂动画可以通过自定义 CSS 实现，在 `@keyframes` 中定义动画帧。为消息添加淡入效果提升用户体验。
-
-创建 `src/styles/animations.css`：
-
-```css
-/* 淡入动画 */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
-}
-
-/* 滑入动画 */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.animate-slide-in {
-  animation: slideIn 0.2s ease-out;
-}
-```
-
-在 `src/index.css` 中引入：
+修改 `src/index.css`：
 
 ```css
 @import "tailwindcss";
-@import "./styles/animations.css";
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
 ```
 
-为聊天消息添加动画：修改 `src/components/chat/ChatContainer.tsx` 中的消息列表部分：
+> RagAssistantView 和 JiraInsightView 的根 div 都已添加 `animate-fade-in` 类，切换视图时会有淡入效果。
+
+### Step 6.2: 更新 `src/main.tsx` 入口
+
+**学习点**：React 18 使用 `createRoot` API（替代 React 17 的 `ReactDOM.render`）。`StrictMode` 在开发模式下会双重渲染，帮助发现副作用问题。
+
+修改 `src/main.tsx`：
 
 ```tsx
-{/* 消息列表 */}
-<div className="flex-1 overflow-y-auto p-4 space-y-4">
-  {messages.map((message) => (
-    <div key={message.id} className="animate-fade-in">
-      <MessageBubble message={message} />
-    </div>
-  ))}
-  {/* ... */}
-</div>
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App'
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
 ```
 
-为看板任务卡片添加动画，修改 `src/components/board/BoardColumn.tsx`：
-
-```tsx
-{filteredTasks.map((task) => (
-  <div key={task.id} className="animate-slide-in">
-    <TaskCard task={task} />
-  </div>
-))}
-```
-
-### Step 18: 端到端验证
-
-**学习点**：完整的开发流程包括最后的验证环节——确保所有功能正常运行，无 TypeScript 错误，构建产物正常。这是实际项目中必不可少的步骤。
+### Step 6.3: 端到端验证
 
 #### 1. 类型检查
 
@@ -876,16 +899,20 @@ npm run dev
 
 | 功能 | 验证方法 | 预期结果 |
 |------|----------|----------|
-| Tab 切换 | 点击 "RAG Chat" 和 "Jira Board" | 内容区域正确切换 |
-| 发送消息 | 在输入框输入文字并点击发送 | 消息出现在列表中，1秒后收到回复 |
-| 输入框清空 | 发送消息后 | 输入框自动清空 |
-| 加载状态 | 发送消息后 | 按钮显示"思考中..."，输入框禁用 |
-| 打字指示器 | 发送消息等待回复时 | 三个弹跳的点 |
-| 消息动画 | 发送新消息时 | 消息淡入出现 |
-| 看板列渲染 | 切换到 Jira Board | 三列正确显示，任务数量正确 |
-| 优先级颜色 | 查看任务卡片 | 高=红色，中=琥珀色，低=绿色 |
-| 卡片动画 | 切换到看板时 | 卡片滑入出现 |
-| 响应式布局 | 缩放浏览器窗口 | 看板在窄屏变为单列 |
+| 暗色主题 | 打开页面 | 整体 `slate-950` 深色背景 |
+| 左侧导航 | 查看左侧 | `w-16` 固定栏，"Ops" 图标 + 功能图标 |
+| Tab 切换 | 点击两个 Tab | blue/indigo 胶囊切换，内容区域无闪烁 |
+| 状态指示 | 查看右上角 | 两个绿色圆点脉冲动画 + "已连/正常" 文字 |
+| RAG 初始消息 | 进入 RAG 视图 | 显示 K8s CPU 问题对话 |
+| RAG 引用标签 | 查看 AI 回复下方 | 两个引用按钮 + 重合度分数（0.94, 0.81） |
+| RAG 发送消息 | 输入文字 + 回车 | 用户消息立即追加（蓝色气泡） |
+| RAG AI 回复 | 发送后等待 | 800ms 后 AI 回复出现 + 新引用 |
+| RAG 引用抽屉 | 点击引用标签 | 右侧 w-80 抽屉展开，显示 chunk 文本 |
+| RAG 关闭抽屉 | 点击抽屉 ✕ | 抽屉消失 |
+| Jira AI Summary | 切换到 Jira | 三栏卡片（趋势预警/效能瓶颈/风险规避） |
+| Jira 统计卡片 | 查看统计区域 | 未解决工单柱状图 + MTTR 进度条 + 风险占比条形图 |
+| Jira 工单表格 | 查看表格 | OPS-1024 + OPS-1192 两行数据 + AI 诊断按钮 |
+| Jira 提问面板 | 查看右侧 | 上下文信息 + 输入框（indigo 主题色） |
 
 #### 4. 构建生产版本
 
@@ -893,7 +920,7 @@ npm run dev
 npm run build
 ```
 
-构建成功后，产物在 `dist/` 目录下。可以用以下方式预览：
+成功后产物在 `dist/` 目录下。预览：
 
 ```bash
 npm run preview
@@ -905,42 +932,36 @@ npm run preview
 
 ```
 assistant-ui/
-├── index.html
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
+├── index.html                      # SPA HTML 入口
+├── package.json                    # 依赖管理
+├── vite.config.ts                  # Vite + React + TailwindCSS 配置
+├── tsconfig.json                   # TypeScript 配置
 ├── src/
-│   ├── main.tsx                    # 入口文件
-│   ├── App.tsx                     # 根组件
-│   ├── index.css                   # 全局样式
+│   ├── main.tsx                    # React 入口 (createRoot + StrictMode)
+│   ├── App.tsx                     # 根组件 (Sidebar + Header + 条件渲染)
+│   ├── index.css                   # 全局样式 + Tailwind + 自定义动画
 │   ├── types/
-│   │   ├── index.ts                # 类型导出
-│   │   ├── message.ts              # 消息类型定义
-│   │   └── task.ts                 # 任务类型定义
+│   │   └── index.ts                # Message / Reference / JiraTicket 类型
 │   ├── data/
-│   │   ├── index.ts                # 数据导出
-│   │   └── mockData.ts             # 模拟数据
-│   ├── components/
-│   │   ├── layout/
-│   │   │   ├── index.ts
-│   │   │   ├── Header.tsx          # 顶部导航
-│   │   │   └── TabNavigation.tsx   # Tab 切换
-│   │   ├── chat/
-│   │   │   ├── index.ts
-│   │   │   ├── MessageBubble.tsx   # 消息气泡
-│   │   │   ├── ChatInput.tsx       # 输入框
-│   │   │   └── ChatContainer.tsx   # 聊天容器
-│   │   └── board/
-│   │       ├── index.ts
-│   │       ├── TaskCard.tsx        # 任务卡片
-│   │       ├── BoardColumn.tsx     # 看板列
-│   │       └── BoardContainer.tsx  # 看板容器
-│   └── styles/
-│       └── animations.css          # 自定义动画
-└── dist/                           # 构建产物
+│   │   └── mockData.ts             # 初始对话消息 + Jira 工单数据
+│   └── components/
+│       ├── Sidebar.tsx             # 左侧 w-16 极简导航栏
+│       ├── Header.tsx              # 顶部 Header + Tab 切换 + 状态指示
+│       ├── rag/
+│       │   ├── RagAssistantView.tsx  # RAG 对话主组件 (state + 模拟 API)
+│       │   ├── MessageBubble.tsx     # 消息气泡 (用户/assistant + 引用)
+│       │   ├── ChatInput.tsx         # 输入框 (受控组件 + Enter 键)
+│       │   └── RefPanel.tsx          # 知识库引用详情抽屉
+│       └── jira/
+│           ├── JiraInsightView.tsx   # Jira 看板主组件
+│           ├── AISummary.tsx         # AI 总结三栏卡片
+│           ├── StatsCards.tsx        # 统计卡片 (柱状图/进度条)
+│           ├── TicketTable.tsx       # 工单表格
+│           └── JiraQuestionPanel.tsx # 右侧 AI 提问面板
+└── test.html                       # 原始 HTML 原型（保留参考）
 ```
 
-**组件统计**：共 **11 个独立组件文件**，与 chatbot-ui/ragflow 的工程化组织方式一致。
+**组件统计**：共 **14 个独立组件文件**（2 布局 + 4 RAG + 5 Jira + App），严格还原 `test.html` 的视觉效果和交互逻辑。
 
 ---
 
@@ -948,7 +969,7 @@ assistant-ui/
 
 ### Q1: `npm create vite` 报错 "command not found"
 
-**解决**：确保 Node.js 已正确安装。如果使用的是旧版 npm，可以尝试：
+**解决**：确保 Node.js 已正确安装。
 
 ```bash
 npx create-vite@latest assistant-ui -- --template react-ts
@@ -969,7 +990,14 @@ npx create-vite@latest assistant-ui -- --template react-ts
 2. 确认已创建对应的 `index.ts` 导出文件
 3. 运行 `npx tsc --noEmit` 查看详细错误信息
 
-### Q4: 状态更新后 UI 没有刷新
+### Q4: Font Awesome 图标不显示
+
+**排查步骤**：
+1. 确认已安装 `@fortawesome/react-fontawesome` 和 `@fortawesome/free-solid-svg-icons`
+2. 检查 import 路径是否正确：`import { faHome } from '@fortawesome/free-solid-svg-icons'`
+3. 确认使用 `<FontAwesomeIcon icon={faHome} />` 而非 `<i class="fa-solid fa-home">`
+
+### Q5: 状态更新后 UI 没有刷新
 
 **原因**：React 通过引用比较检测状态变化。直接修改数组/对象不会触发重新渲染。
 
@@ -982,33 +1010,32 @@ setMessages(messages)
 **正确示例**：
 ```tsx
 setMessages([...messages, newMessage])  // ✅ 创建新数组
+// 或使用函数式更新
+setMessages((prev) => [...prev, newMessage])
 ```
-
-### Q5: 热更新（HMR）不工作
-
-**解决**：
-1. 检查终端是否有编译错误
-2. 确保文件扩展名正确（`.tsx` 而非 `.ts`）
-3. 尝试重启开发服务器
 
 ### Q6: 如何接入真实 API？
 
-**扩展方向**：将 `ChatContainer` 中的 `setTimeout` 替换为 `fetch` 调用：
+将 `RagAssistantView` 中的 `setTimeout` 替换为 `fetch` 调用：
 
 ```tsx
-const handleSend = async (content: string) => {
-  // ...添加用户消息逻辑...
-  
+const handleSend = async (text: string) => {
+  setMessages([...messages, { id: Date.now(), role: 'user', content: text }])
   try {
-    const response = await fetch('/api/chat', {
+    const response = await fetch('/api/rag/query', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: content }),
+      body: JSON.stringify({ question: text }),
     })
     const data = await response.json()
-    // ...处理响应...
+    setMessages((prev) => [...prev, {
+      id: Date.now() + 1,
+      role: 'assistant',
+      content: data.answer,
+      refs: data.references,
+    }])
   } catch (error) {
-    // ...处理错误...
+    // 处理错误
   }
 }
 ```
@@ -1021,10 +1048,12 @@ const handleSend = async (content: string) => {
 
 | 方向 | 推荐内容 |
 |------|----------|
-| 状态管理 | Zustand / Redux Toolkit |
-| 路由 | React Router v6 |
-| 表单处理 | React Hook Form + Zod |
-| API 调用 | TanStack Query (React Query) |
-| 测试 | Vitest + React Testing Library |
-| 拖拽交互 | dnd-kit（用于看板拖拽） |
-| 流式响应 | ReadableStream + SSE（用于 RAG 流式输出） |
+| 状态管理 | Zustand / Redux Toolkit（跨组件状态共享） |
+| 路由 | React Router v6（多页面导航） |
+| 表单处理 | React Hook Form + Zod（表单验证） |
+| API 调用 | TanStack Query / SWR（缓存 + 自动重试） |
+| 测试 | Vitest + React Testing Library（组件单元测试） |
+| Markdown 渲染 | react-markdown（AI 回复支持 Markdown） |
+| 流式响应 | ReadableStream + SSE（RAG 流式输出） |
+| 拖拽交互 | dnd-kit（工单卡片拖拽） |
+| 代码编辑器 | CodeMirror / Monaco（运维命令输入场景） |
